@@ -1,84 +1,46 @@
+using Mgh.Swagger.Model;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.OpenApi.Models;
+using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace Mgh.Swagger.Extensions;
 
 public static class RegisterSwaggerServiceExtensions
 {
     public static IServiceCollection AddSwagger(this IServiceCollection services,
-        Action<ISwaggerConfig> options)
+        Action<SwaggerGenOptions> swaggerGenOptions, SwaggerConfig swaggerConfig)
     {
-        if (options == null)
-            throw new ArgumentException(nameof(options), "please provide config");
+        if (swaggerGenOptions == null)
+            throw new ArgumentException(nameof(swaggerConfig));
 
-        var config = new SwaggerConfig();
-        options.Invoke(config);
-
-        if (string.IsNullOrEmpty(config.OpenApiInfo.Description))
-            throw new ArgumentNullException(nameof(SwaggerConfig.OpenApiInfo.Description), "Description null");
-
-        if (string.IsNullOrEmpty(config.OpenApiInfo.Version))
-            throw new ArgumentNullException(nameof(SwaggerConfig.OpenApiInfo.Version), "Version null");
-
-        if (string.IsNullOrEmpty(config.OpenApiInfo.Title))
-            throw new ArgumentNullException(nameof(SwaggerConfig.OpenApiInfo.Title), "Title null");
-
-        if (string.IsNullOrEmpty(config.XmlComments))
-            throw new ArgumentNullException(nameof(SwaggerConfig.XmlComments), "XmlComments null");
-
-        if (string.IsNullOrEmpty(config.OpenApiSecurityScheme.Description))
-            throw new ArgumentNullException(nameof(SwaggerConfig.OpenApiSecurityScheme.Description),
-                "Description null");
-
-        if (string.IsNullOrEmpty(config.OpenApiSecurityScheme.Name))
-            throw new ArgumentNullException(nameof(SwaggerConfig.OpenApiSecurityScheme.Name), "Name is null");
-
-        if (string.IsNullOrEmpty(config.OpenApiSecurityScheme.Scheme))
-            throw new ArgumentNullException(nameof(SwaggerConfig.OpenApiSecurityScheme.Scheme),
-                "SecuritySchema.Schema is null");
+        var config = new SwaggerGenOptions();
+        swaggerGenOptions.Invoke(config);
 
 
-        if (string.IsNullOrEmpty(config.OpenApiReference.Id))
-            throw new ArgumentNullException(nameof(SwaggerConfig.OpenApiReference.Id), "SecurityReferenceId is null");
-
-        if (string.IsNullOrEmpty(config.AddSecurityDefinitionTitle))
-            throw new ArgumentNullException(nameof(SwaggerConfig.AddSecurityDefinitionTitle),
-                "AddSecurityDefinitionTitle is null");
-
-        services.AddSwaggerGen(c =>
+        try
         {
-            c.SwaggerDoc(config.OpenApiInfo.Title, new OpenApiInfo
+            services.AddSwaggerGen(c =>
             {
-                Title = config.OpenApiInfo.Title,
-                Version = config.OpenApiInfo.Version,
-                Description = config.OpenApiInfo.Description
+                if (swaggerConfig.OpenApiInfo is not null)
+                    c.SwaggerDocOption(swaggerConfig.OpenApiInfo);
+
+                if (swaggerConfig.IsXmlCommentsActive)
+                    c.XmlCommentOption();
+            
+                // if (swaggerConfig.IsAuthorizationActive)
+                // {
+                //     c.AddSecurityDefinitionOption(swaggerConfig.AddSecurityDefinitionTitle,
+                //         swaggerConfig.OpenApiSecurityScheme);
+                //
+                //     c.AddSecurityRequirementOption(swaggerConfig.OpenApiSecurityRequirement);
+                // }
             });
-
-            c.IncludeXmlComments(config.XmlComments);
-            var securitySchema = new OpenApiSecurityScheme
-            {
-                Description =
-                    config.OpenApiSecurityScheme.Description,
-                Name = config.OpenApiSecurityScheme.Name,
-                In = config.OpenApiSecurityScheme.In,
-                Type = config.OpenApiSecurityScheme.Type,
-                Scheme = config.OpenApiSecurityScheme.Scheme,
-                Reference = new OpenApiReference
-                {
-                    Type = config.OpenApiReference.Type,
-                    Id = config.OpenApiReference.Id
-                }
-            };
-
-            c.AddSecurityDefinition(config.AddSecurityDefinitionTitle, securitySchema);
-
-            var securityRequirement = new OpenApiSecurityRequirement
-            {
-                { securitySchema, config.SecurityRequirementSchema }
-            };
-
-            c.AddSecurityRequirement(securityRequirement);
-        });
-        return services;
+            return services;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw;
+        }
+      
     }
 }
